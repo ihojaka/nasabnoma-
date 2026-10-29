@@ -10,17 +10,37 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@v4
+
       - name: Build AAB
         run: |
-          unzip -o '*.zip' -d .
+          set -x
+          echo "=== files in root ==="
+          ls -la
+          echo "=== unzip ==="
+          if ls *.zip 1> /dev/null 2>&1; then
+            unzip -o '*.zip' -d .
+          else
+            echo "No zip file found, continuing"
+          fi
+          echo "=== find gradlew ==="
+          find . -name "gradlew" -type f
           DIR=$(find . -name "gradlew" | head -n 1 | xargs dirname)
-          echo "DIR=$DIR"
-          cd $DIR
-          # keystore
-          keytool -genkey -v -keystore my-release-key.keystore -alias alias_name -keyalg RSA -keysize 2048 -validity 10000 -storepass password -keypass password -dname "CN=Test"
+          echo "DIR is: [$DIR]"
+          if [ -z "$DIR" ]; then
+            echo "ERROR: gradlew not found!"
+            exit 1
+          fi
+          cd "$DIR"
+          pwd
+          ls -la
+          if [ ! -f "my-release-key.keystore" ]; then
+            keytool -genkey -v -keystore my-release-key.keystore -alias alias_name -keyalg RSA -keysize 2048 -validity 10000 -storepass password -keypass password -dname "CN=Test"
+          fi
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease --stacktrace
+
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: aab
           path: '**/*.aab'
