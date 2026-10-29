@@ -1,0 +1,28 @@
+name: Build AAB
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: |
+          unzip -o nasabnoma-android-project-v2.zip
+          shopt -s dotglob
+          mv nasabnoma-android-project-v2/* . 2>/dev/null || mv nasabnoma-android-project-v2-v2/* . 2>/dev/null || mv nasabnoma_project/* . 2>/dev/null || true
+          rm -rf nasabnoma-android-project-v2.zip
+          ls -la
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Build AAB
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: nasabnoma-aab
+          path: app/build/outputs/bundle/release/*.aab
