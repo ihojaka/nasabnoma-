@@ -1,5 +1,7 @@
 name: Build AAB
-on: workflow_dispatch
+on:
+  push:
+  workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,12 +11,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
       - name: Build AAB
         run: |
           unzip -o nasabnoma-android-project-v2.zip
-          cd nasabnoma_project
+          mv nasabnoma_project/* ./
+          rm -rf .github
+          mkdir -p .github/workflows
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           ./gradlew bundleRelease --stacktrace
@@ -22,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nasabnoma-aab
-          path: nasabnoma_project/app/build/outputs/bundle/release/*.aab
+          path: app/build/outputs/bundle/release/*.aab
