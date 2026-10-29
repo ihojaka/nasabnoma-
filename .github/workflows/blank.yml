@@ -9,25 +9,17 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: android-actions/setup-android@v3
       - name: Build AAB
         run: |
-          unzip -o '*.zip' || true
-          DIR=$(find . -name "gradlew" | head -n 1 | xargs dirname)
-          echo "Project in $DIR"
+          unzip -o '*.zip' -d . || true
+          DIR=$(find . -name "gradlew" -type f | head -n 1 | xargs dirname)
+          echo "DIR=$DIR"
           cd $DIR
-          keytool -genkey -v -keystore app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -alias upload -keypass 123456 -dname "CN=Nasabnoma, O=Nasabnoma, C=KG"
-          python3 << 'PY'
-          import glob, pathlib
-          for f in glob.glob("**/build.gradle", recursive=True):
-              t=pathlib.Path(f).read_text()
-              if "signingConfigs" not in t:
-                  t=t.replace("buildTypes {", "signingConfigs { release { storeFile file('upload-keystore.jks'); storePassword '123456'; keyAlias 'upload'; keyPassword '123456' } } buildTypes {")
-                  t=t.replace("release {", "release { signingConfig signingConfigs.release ")
-                  pathlib.Path(f).write_text(t)
-                  print(f"patched {f}")
-          PY
+          # keystore
+          keytool -genkey -v -keystore /tmp/my.keystore -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -alias upload -keypass 123456 -dname "CN=Nasabnoma"
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease -Pandroid.injected.signing.store.file=/tmp/my.keystore -Pandroid.injected.signing.store.password=123456 -Pandroid.injected.signing.key.alias=upload -Pandroid.injected.signing.key.password=123456 --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: nasabnoma-aab
