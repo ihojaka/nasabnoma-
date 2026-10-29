@@ -4,18 +4,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
       - name: Build AAB
         run: |
-          unzip -o nasabnoma-android-project-v2.zip
-          if [ -d "nasabnoma_project" ]; then mv nasabnoma_project/* ./; fi
+          unzip -o '*.zip' || true
+          DIR=$(find . -name "gradlew" | head -n 1 | xargs dirname)
+          echo "Project in $DIR"
+          cd $DIR
+          keytool -genkey -v -keystore app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -alias upload -keypass 123456 -dname "CN=Nasabnoma, O=Nasabnoma, C=KG"
+          python3 << 'PY'
+          import glob, pathlib
+          for f in glob.glob("**/build.gradle", recursive=True):
+              t=pathlib.Path(f).read_text()
+              if "signingConfigs" not in t:
+                  t=t.replace("buildTypes {", "signingConfigs { release { storeFile file('upload-keystore.jks'); storePassword '123456'; keyAlias 'upload'; keyPassword '123456' } } buildTypes {")
+                  t=t.replace("release {", "release { signingConfig signingConfigs.release ")
+                  pathlib.Path(f).write_text(t)
+                  print(f"patched {f}")
+          PY
           chmod +x gradlew
           ./gradlew bundleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: nasabnoma-aab
-          path: app/build/outputs/bundle/release/*.aab
+          path: "**/app/build/outputs/bundle/release/*.aab"
